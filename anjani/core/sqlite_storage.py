@@ -41,6 +41,15 @@ CREATE TABLE IF NOT EXISTS usernames
     last_update_on INTEGER NOT NULL DEFAULT (CAST(STRFTIME('%s', 'now') AS INTEGER))
 );
 
+CREATE TABLE update_state
+(
+    id   INTEGER PRIMARY KEY,
+    pts  INTEGER,
+    qts  INTEGER,
+    date INTEGER,
+    seq  INTEGER
+);
+
 CREATE TABLE version
 (
     number INTEGER PRIMARY KEY
@@ -75,7 +84,7 @@ END;
 
 
 class SQLiteStorage(Storage):
-    VERSION = 4
+    VERSION = 5
     USERNAME_TTL = 8 * 60 * 60
     _conn: sqlite3.Connection
 
@@ -122,8 +131,23 @@ END;
 """
                 )
             version += 1
+        if version == 4:
+            with self.conn:
+                self.conn.executescript(
+                    """
+CREATE TABLE IF NOT EXISTS update_state
+(
+    id   INTEGER PRIMARY KEY,
+    pts  INTEGER,
+    qts  INTEGER,
+    date INTEGER,
+    seq  INTEGER
+);
+"""
+                )
+            version += 1
 
-        await self.version(version)  # type:ignore
+        await self.version(version)  # type: ignore
 
     async def open(self):
         path = self.database
@@ -147,15 +171,27 @@ END;
     async def update_peers(self, peers: List[Tuple[int, int, str, str, str]]) -> None:
         with self.conn:
             self.conn.executemany(
-                "REPLACE INTO peers (id, access_hash, type, username, phone_number)"
-                "VALUES (?, ?, ?, ?, ?)",
+                "REPLACE INTO peers (id, access_hash, type, username, phone_number) VALUES (?, ?, ?, ?, ?)",
                 peers,
             )
 
     async def update_usernames(self, usernames: List[Tuple[int, str]]):
         for user in usernames:
             self.conn.execute("DELETE FROM usernames WHERE peer_id=?", (user[0],))
-        self.conn.executemany("REPLACE INTO usernames (peer_id, id)" "VALUES (?, ?)", usernames)
+        self.conn.executemany("REPLACE INTO usernames (peer_id, id) VALUES (?, ?)", usernames)
+
+    async def update_state(self, value: Tuple[int, int, int, int, int] = object):
+        if value == object:
+            return self.conn.execute("SELECT id, pts, qts, date, seq FROM update_state").fetchall()
+        else:
+            with self.conn:
+                if value is None:
+                    self.conn.execute("DELETE FROM update_state")
+                else:
+                    self.conn.execute(
+                        "REPLACE INTO update_state (id, pts, qts, date, seq) VALUES (?, ?, ?, ?, ?)",
+                        value,
+                    )
 
     async def get_peer_by_id(
         self, peer_id: int
@@ -173,15 +209,13 @@ END;
         self, username: str
     ) -> Union[InputPeerUser, InputPeerChat, InputPeerChannel]:
         r = self.conn.execute(
-            "SELECT id, access_hash, type, last_update_on FROM peers WHERE username = ?"
-            "ORDER BY last_update_on DESC",
+            "SELECT id, access_hash, type, last_update_on FROM peers WHERE username = ? ORDER BY last_update_on DESC",
             (username,),
         ).fetchone()
 
         if r is None:
             r2 = self.conn.execute(
-                "SELECT peer_id, last_update_on FROM usernames WHERE id = ?"
-                "ORDER BY last_update_on DESC",
+                "SELECT peer_id, last_update_on FROM usernames WHERE id = ? ORDER BY last_update_on DESC",
                 (username,),
             ).fetchone()
             if r2 is None:
@@ -189,9 +223,8 @@ END;
 
             if abs(time.time() - r2[1]) > self.USERNAME_TTL:
                 raise KeyError(f"Username expired: {username}")
-            r = r = self.conn.execute(
-                "SELECT id, access_hash, type, last_update_on FROM peers WHERE id = ?"
-                "ORDER BY last_update_on DESC",
+            r = self.conn.execute(
+                "SELECT id, access_hash, type, last_update_on FROM peers WHERE id = ? ORDER BY last_update_on DESC",
                 (r2[0],),
             ).fetchone()
             if r is None:

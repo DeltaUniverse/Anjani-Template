@@ -1025,13 +1025,13 @@ zstd = ["zstandard"]
 
 [[package]]
 name = "pyrofork"
-version = "2.3.26"
+version = "2.3.42"
 description = "Fork of pyrogram. Elegant, modern and asynchronous Telegram MTProto API framework in Python for users and bots"
 optional = false
 python-versions = "~=3.8"
 files = [
-    {file = "pyrofork-2.3.26-py3-none-any.whl", hash = "sha256:f0e8785b56321f5e39353b162a0887cc107180798b6c363df45b6dfd16010a7f"},
-    {file = "pyrofork-2.3.26.tar.gz", hash = "sha256:853361b02422ec165318bf9eea0f3e611e8750a1913e2b0c9acc21d937abece3"},
+    {file = "pyrofork-2.3.42-py3-none-any.whl", hash = "sha256:da3684e641121917f912a11ee745e8635d3dd58cbf9451949811250bae3fde24"},
+    {file = "pyrofork-2.3.42.tar.gz", hash = "sha256:c9edb130e555f8a3e50bbdbb26e1dd353db4925ea05d3adf0ca98e3375017872"},
 ]
 
 [package.dependencies]
@@ -1041,7 +1041,7 @@ pysocks = "1.7.1"
 
 [package.extras]
 dev = ["hatch (>=1.7.0)", "pytest (>=7.4.3)", "pytest-asyncio (>=0.21.1)", "pytest-cov (>=4.1.0)", "twine (>=4.0.2)"]
-docs = ["sphinx", "sphinx-autobuild", "sphinx-copybutton", "sphinx-immaterial (==0.11.12)", "tornado (>=6.3.3)"]
+docs = ["sphinx", "sphinx-autobuild", "sphinx-copybutton", "sphinx-immaterial (==0.12.2)", "tornado (>=6.3.3)"]
 speedup = ["tgcrypto-pyrofork (>=1.2.6)", "uvloop (>=0.19.0)"]
 
 [[package]]
